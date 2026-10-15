@@ -1,0 +1,77 @@
+﻿"use client";
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { supabase } from "@/lib/supabase";
+import { CATEGORIES } from "@/lib/categories";
+
+const fmt = (t: string) =>
+  new Date(t).toLocaleString("de-CH", { weekday: "short", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+
+export default function Home() {
+  const [plz, setPlz] = useState("");
+  const [cat, setCat] = useState("");
+  const [list, setList] = useState<any[]>([]);
+  const [info, setInfo] = useState<Record<string, any>>({});
+  const [busy, setBusy] = useState(false);
+
+  async function search(e?: React.FormEvent) {
+    e?.preventDefault();
+    setBusy(true);
+    let q = supabase.from("providers").select("id,name,category,street,plz,city").eq("paused", false);
+    if (plz.trim()) q = q.eq("plz", plz.trim());
+    if (cat) q = q.eq("category", cat);
+    const { data } = await q.order("name").limit(50);
+    const rows: any[] = data ?? [];
+    setList(rows);
+    const meta: Record<string, any> = {};
+    if (rows.length) {
+      const { data: sl } = await supabase
+        .from("open_slots")
+        .select("provider_id,starts_at,is_last_minute,discount_pct")
+        .in("provider_id", rows.map((r) => r.id))
+        .order("starts_at");
+      (sl ?? []).forEach((s: any) => {
+        const m = (meta[s.provider_id] ??= { next: s.starts_at, lm: 0, disc: 0 });
+        if (s.is_last_minute) { m.lm += 1; m.disc = Math.max(m.disc, s.discount_pct); }
+      });
+    }
+    setInfo(meta);
+    setBusy(false);
+  }
+  useEffect(() => { search(); }, []);
+
+  return (
+    <main>
+      <h1>Freie Termine. Last Minute.</h1>
+      <p>Friseure, Barbiere und mehr mit freien Plätzen, kurzfristig oft günstiger.</p>
+      <form onSubmit={search} style={{ display: "flex", gap: 8, flexWrap: "wrap", margin: "20px 0" }}>
+        <input value={plz} onChange={(e) => setPlz(e.target.value)} placeholder="PLZ, z. B. 9000" inputMode="numeric" maxLength={4} style={{ maxWidth: 170 }} />
+        <select value={cat} onChange={(e) => setCat(e.target.value)}>
+          <option value="">Alle Kategorien</option>
+          {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+        </select>
+        <button type="submit">{busy ? "Suche ..." : "Suchen"}</button>
+      </form>
+
+      {!busy && list.length === 0 && <p>Keine Anbieter gefunden. Probiere nur die PLZ oder eine andere Kategorie.</p>}
+
+      {list.map((r) => {
+        const m = info[r.id];
+        return (
+          <Link key={r.id} href={`/p/${r.id}`} style={{ display: "block", padding: 14, margin: "10px 0", textDecoration: "none", color: "inherit" }}>
+            <b style={{ fontSize: 18 }}>{r.name}</b>
+            <div style={{ color: "var(--mut)" }}>{r.category} · {r.street}, {r.plz} {r.city}</div>
+            <div style={{ marginTop: 8 }}>
+              {m?.next ? <>Nächster freier Termin: <b>{fmt(m.next)}</b></> : <span style={{ color: "var(--mut)" }}>Aktuell keine freien Termine</span>}
+              {m?.lm > 0 && (
+                <span style={{ marginLeft: 8, background: "var(--ac)", color: "#fff", borderRadius: 6, padding: "2px 8px", fontSize: 13, fontWeight: 700 }}>
+                  {m.lm} Last Minute bis -{m.disc}%
+                </span>
+              )}
+            </div>
+          </Link>
+        );
+      })}
+    </main>
+  );
+}

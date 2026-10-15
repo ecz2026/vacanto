@@ -1,0 +1,41 @@
+"use client";
+import { useState } from "react";
+import Link from "next/link";
+import { supabase } from "@/lib/supabase";
+
+const COLS = "id,name,category,street,plz,city";
+
+export default function Home() {
+  const [plz, setPlz] = useState("");
+  const [res, setRes] = useState<any[] | null>(null);
+
+  async function search(e: React.FormEvent) {
+    e.preventDefault();
+    const p = plz.trim();
+    if (!/^\d{4}$/.test(p)) return alert("Bitte eine 4-stellige PLZ eingeben.");
+    let { data } = await supabase.from("providers").select(COLS).eq("plz", p);
+    if (!data?.length) {
+      // Fallback: gleiche Region (erste 2 Ziffern)
+      ({ data } = await supabase.from("providers").select(COLS).like("plz", p.slice(0, 2) + "%").limit(30));
+    }
+    setRes(data ?? []);
+  }
+
+  return (
+    <main style={{ maxWidth: 720, margin: "0 auto", padding: 20 }}>
+      <h1>Vacanto</h1>
+      <p>Freie Termine bei Friseur, Barber, Nails, Massage und mehr.</p>
+      <form onSubmit={search} style={{ display: "flex", gap: 8 }}>
+        <input value={plz} onChange={(e) => setPlz(e.target.value)} placeholder="PLZ, z. B. 9200" inputMode="numeric" maxLength={4} />
+        <button>Suchen</button>
+      </form>
+      {res && (res.length === 0 ? <p>Keine Anbieter gefunden.</p> : res.map((p) => (
+        <Link key={p.id} href={`/p/${p.id}`} style={{ display: "block", border: "1px solid #ddd", borderRadius: 12, padding: 12, margin: "10px 0", color: "inherit", textDecoration: "none" }}>
+          <b>{p.name}</b> · {p.category}<br />
+          {p.street}, {p.plz} {p.city}
+        </Link>
+      )))}
+      <p><Link href="/dashboard">Ich bin Anbieter</Link> · <Link href="/login">Login</Link></p>
+    </main>
+  );
+}

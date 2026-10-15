@@ -1,0 +1,234 @@
+﻿"use client";
+import { useEffect, useState, useCallback } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { supabase } from "@/lib/supabase";
+
+const dayLabel = (t: string) => new Date(t).toLocaleDateString("de-CH", { weekday: "long", day: "numeric", month: "long" });
+const tm = (t: string) => new Date(t).toLocaleTimeString("de-CH", { hour: "2-digit", minute: "2-digit" });
+const chf = (n: number) => `CHF ${Number(n).toFixed(2)}`;
+const att = (v: string | null) => (v === "attended" ? "war da" : v === "no_show" ? "nicht erschienen" : "noch offen");
+
+export default function Dashboard() {
+  const router = useRouter();
+  const [uid, setUid] = useState<string | null>(null);
+  const [p, setP] = useState<any>(null);
+  const [ready, setReady] = useState(false);
+  const [services, setServices] = useState<any[]>([]);
+  const [tiers, setTiers] = useState<any[]>([]);
+  const [cal, setCal] = useState<any[]>([]);
+  const [svcName, setSvcName] = useState("");
+  const [svcPrice, setSvcPrice] = useState("");
+  const [tH, setTH] = useState("");
+  const [tP, setTP] = useState("");
+  const [date, setDate] = useState("");
+  const [timeV, setTimeV] = useState("");
+  const [dur, setDur] = useState("45");
+  const [reg, setReg] = useState({ name: "", category: "Friseur", street: "", plz: "", city: "", phone: "" });
+
+  const load = useCallback(async () => {
+    const { data: u } = await supabase.auth.getUser();
+    if (!u.user) { router.push("/login?next=/dashboard"); return; }
+    setUid(u.user.id);
+    const { data: pr } = await supabase.from("providers").select("*").eq("id", u.user.id).maybeSingle();
+    setP(pr);
+    if (pr) {
+      const { data: sv } = await supabase.from("services").select("*").eq("provider_id", pr.id).eq("active", true).order("created_at");
+      setServices(sv ?? []);
+      const { data: tr } = await supabase.from("discount_tiers").select("*").eq("provider_id", pr.id).order("hours_before");
+      setTiers(tr ?? []);
+      const { data: c } = await supabase.from("provider_calendar").select("*").order("starts_at");
+      setCal(c ?? []);
+    }
+    setReady(true);
+  }, [router]);
+  useEffect(() => { load(); }, [load]);
+
+  async function registerProvider() {
+    const r = {
+      name: reg.name.trim(), category: reg.category.trim(), street: reg.street.trim(),
+      plz: reg.plz.trim(), city: reg.city.trim(), phone: reg.phone.trim(),
+    };
+    if (!r.name || !r.category || !r.street || !r.city) return alert("Bitte Name, Kategorie, Strasse und Ort ausfüllen.");
+    if (!/^[0-9]{4}$/.test(r.plz)) return alert("Die PLZ muss aus genau 4 Ziffern bestehen.");
+    const { error } = await supabase.from("providers").insert({ id: uid, owner_id: uid, ...r, phone: r.phone || null });
+    if (error) return alert(error.message);
+    load();
+  }
+  async function addService() {
+    const price = Number(svcPrice.replace(",", "."));
+    if (!svcName.trim() || svcPrice.trim() === "" || !(price >= 0)) return alert("Bitte Leistung und Preis eintragen.");
+    const { error } = await supabase.from("services").insert({ provider_id: uid, name: svcName.trim(), price });
+    if (error) return alert(error.message);
+    setSvcName(""); setSvcPrice(""); load();
+  }
+  async function removeService(id: string) {
+    if (!confirm("Leistung entfernen? Bestehende Buchungen bleiben unverändert.")) return;
+    const { error } = await supabase.from("services").update({ active: false }).eq("id", id);
+    if (error) return alert(error.message);
+    load();
+  }
+  async function addTier() {
+    const h = Number(tH);
+    const d = Number(tP);
+    if (!Number.isInteger(h) || h < 1 || h > 72) return alert("Stunden: ganze Zahl von 1 bis 72.");
+    if (!Number.isInteger(d) || d < 1 || d > 40) return alert("Rabatt: ganze Zahl von 1 bis 40 %.");
+    const { error } = await supabase.from("discount_tiers").insert({ provider_id: uid, hours_before: h, discount_pct: d });
+    if (error) return alert(error.code === "23505" ? "Für diese Stundenzahl gibt es schon eine Stufe." : error.message);
+    setTH(""); setTP(""); load();
+  }
+  async function removeTier(id: string) {
+    const { error } = await supabase.from("discount_tiers").delete().eq("id", id);
+    if (error) return alert(error.message);
+    load();
+  }
+  async function addSlot() {
+    if (!date || !timeV) return alert("Bitte Datum und Uhrzeit wählen.");
+    const start = new Date(`${date}T${timeV}`);
+    if (start.getTime() < Date.now()) return alert("Der Termin liegt in der Vergangenheit.");
+    const { error } = await supabase.from("slots").insert({ provider_id: uid, starts_at: start.toISOString(), duration_min: Number(dur) });
+    if (error) return alert(error.message);
+    setTimeV(""); load();
+  }
+  async function deleteSlot(id: string) {
+    if (!confirm("Freien Termin löschen?")) return;
+    const { error } = await supabase.from("slots").delete().eq("id", id);
+    if (error) alert("Dieser Termin hat eine Buchungshistorie und kann nicht gelöscht werden.");
+    load();
+  }
+  async function respond(id: string, accept: boolean) {
+    const { error } = await supabase.rpc("respond_booking", { p_booking_id: id, p_accept: accept });
+    if (error) alert(error.message);
+    load();
+  }
+  async function setAtt(id: string, attended: boolean) {
+    const { error } = await supabase.rpc("set_attendance", { p_booking_id: id, p_as: "provider", p_attended: attended });
+    if (error) alert(error.message);
+    load();
+  }
+
+  if (!ready) return <main>Lädt ...</main>;
+
+  if (!p) {
+    return (
+      <main>
+        <h1>Als Anbieter registrieren</h1>
+        <p>Trage die Daten deines Betriebs ein.</p>
+        <div style={{ display: "grid", gap: 8, marginTop: 16 }}>
+          <input placeholder="Name des Betriebs" value={reg.name} onChange={(e) => setReg({ ...reg, name: e.target.value })} />
+          <input placeholder="Kategorie (z. B. Friseur)" value={reg.category} onChange={(e) => setReg({ ...reg, category: e.target.value })} />
+          <input placeholder="Strasse und Nr." value={reg.street} onChange={(e) => setReg({ ...reg, street: e.target.value })} />
+          <input placeholder="PLZ (4 Ziffern)" inputMode="numeric" maxLength={4} value={reg.plz} onChange={(e) => setReg({ ...reg, plz: e.target.value })} />
+          <input placeholder="Ort" value={reg.city} onChange={(e) => setReg({ ...reg, city: e.target.value })} />
+          <input placeholder="Telefon (optional)" value={reg.phone} onChange={(e) => setReg({ ...reg, phone: e.target.value })} />
+          <button onClick={registerProvider}>Registrieren</button>
+        </div>
+      </main>
+    );
+  }
+
+  const now = Date.now();
+  const startToday = new Date(); startToday.setHours(0, 0, 0, 0);
+  const ended = (r: any) => new Date(r.ends_at).getTime() < now;
+  const needsAtt = (r: any) => r.status === "confirmed" && r.provider_attendance == null && ended(r);
+  const visible = cal.filter((r) => new Date(r.starts_at) >= startToday || needsAtt(r));
+  const pending = visible.filter((r) => r.status === "pending").length;
+  const days: Record<string, any[]> = {};
+  visible.forEach((r) => (days[dayLabel(r.starts_at)] ??= []).push(r));
+  const tiersSorted = [...tiers].sort((a, b) => a.hours_before - b.hours_before);
+  const tierWarn = tiersSorted.some((t, i) => i > 0 && t.discount_pct > tiersSorted[i - 1].discount_pct);
+
+  return (
+    <main>
+      <h1>{p.name}</h1>
+      <p><Link href={`/p/${p.id}`}>Meine öffentliche Seite ansehen</Link></p>
+      {pending > 0 && <p><b style={{ color: "var(--ac)" }}>{pending} offene Anfrage{pending > 1 ? "n" : ""}</b>, siehe Kalender unten.</p>}
+
+      <h2>Preisliste</h2>
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+        <input placeholder="Leistung (z. B. Bart)" value={svcName} onChange={(e) => setSvcName(e.target.value)} />
+        <input placeholder="Preis CHF" inputMode="decimal" value={svcPrice} onChange={(e) => setSvcPrice(e.target.value)} style={{ maxWidth: 140 }} />
+        <button onClick={addService}>Hinzufügen</button>
+      </div>
+      {services.map((x) => (
+        <div key={x.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "6px 0" }}>
+          <span>{x.name}: {Number(x.price).toFixed(2)} CHF</span>
+          <button onClick={() => removeService(x.id)}>Löschen</button>
+        </div>
+      ))}
+
+      <h2>Last-Minute-Rabatt</h2>
+      <p>Lege fest, wie viel günstiger ein Termin wird, je näher er rückt. Beispiel: unter 24 Std. 10 %, unter 5 Std. 15 %.</p>
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+        Beginnt in weniger als
+        <input type="number" min={1} max={72} placeholder="Std." value={tH} onChange={(e) => setTH(e.target.value)} style={{ maxWidth: 100 }} /> Std.
+        <input type="number" min={1} max={40} placeholder="%" value={tP} onChange={(e) => setTP(e.target.value)} style={{ maxWidth: 100 }} /> % Rabatt
+        <button onClick={addTier}>Hinzufügen</button>
+      </div>
+      {tiersSorted.length === 0 && <p>Noch keine Stufe eingetragen. Ohne Stufen gibt es keinen Rabatt.</p>}
+      {tiersSorted.map((t) => (
+        <div key={t.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "6px 0" }}>
+          <span>Beginnt in weniger als <b>{t.hours_before} Std.</b>: <b>{t.discount_pct} % Rabatt</b></span>
+          <button onClick={() => removeTier(t.id)}>Löschen</button>
+        </div>
+      ))}
+      {tierWarn && <p style={{ color: "crimson" }}>Tipp: Je näher der Termin, desto höher sollte der Rabatt sein. Aktuell ist eine Stufe mit mehr Stunden günstiger als eine mit weniger Stunden.</p>}
+
+      <h2>Freien Termin eintragen</h2>
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+        <input type="date" value={date} onChange={(e) => setDate(e.target.value)} style={{ maxWidth: 190 }} />
+        <input type="time" value={timeV} onChange={(e) => setTimeV(e.target.value)} style={{ maxWidth: 150 }} />
+        <select value={dur} onChange={(e) => setDur(e.target.value)}>
+          {[30, 45, 60, 90, 120].map((d) => <option key={d} value={d}>{d} Min.</option>)}
+        </select>
+        <button onClick={addSlot}>Eintragen</button>
+      </div>
+
+      <h2>Mein Kalender</h2>
+      {Object.keys(days).length === 0 && <p>Keine anstehenden Termine.</p>}
+      {Object.entries(days).map(([d, list]) => (
+        <div key={d} style={{ border: "1px solid #ddd", borderRadius: 12, padding: 12, margin: "10px 0" }}>
+          <b>{d}</b>
+          {list.map((r) => {
+            const mismatch = r.provider_attendance && r.customer_attendance && r.provider_attendance !== r.customer_attendance;
+            return (
+              <article key={r.slot_id} style={{ background: r.status === "pending" ? "#fff4e5" : "var(--bg)", borderRadius: 10, padding: 10, marginTop: 8 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                  <b>{tm(r.starts_at)} - {tm(r.ends_at)}</b>
+                  {!r.booking_id && <span>frei <button onClick={() => deleteSlot(r.slot_id)}>Löschen</button></span>}
+                  {r.status === "pending" && (
+                    <span>
+                      <button onClick={() => respond(r.booking_id, true)}>Bestätigen</button>{" "}
+                      <button onClick={() => respond(r.booking_id, false)}>Ablehnen</button>
+                    </span>
+                  )}
+                  {r.status === "confirmed" && <span>Bestätigt</span>}
+                </div>
+                {r.booking_id && (
+                  <div style={{ marginTop: 6 }}>
+                    {r.customer_name} · {r.services_text ?? "keine Leistungen"} · <b>{chf(r.total_chf)}</b>
+                  </div>
+                )}
+                {r.status === "confirmed" && ended(r) && (
+                  <div style={{ marginTop: 8 }}>
+                    {r.provider_attendance == null ? (
+                      <span>
+                        War {r.customer_name} beim Termin?{" "}
+                        <button onClick={() => setAtt(r.booking_id, true)}>Ja, war da</button>{" "}
+                        <button onClick={() => setAtt(r.booking_id, false)}>Nicht erschienen</button>
+                      </span>
+                    ) : (
+                      <span>Deine Angabe: <b>{att(r.provider_attendance)}</b></span>
+                    )}
+                    <div style={{ marginTop: 4, color: "var(--mut)" }}>Angabe des Kunden: {att(r.customer_attendance)}</div>
+                    {mismatch && <div style={{ marginTop: 4, color: "crimson" }}>Unterschiedliche Angaben, bitte klärt das direkt miteinander.</div>}
+                  </div>
+                )}
+              </article>
+            );
+          })}
+        </div>
+      ))}
+    </main>
+  );
+}

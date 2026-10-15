@@ -1,0 +1,91 @@
+"use client";
+import { useEffect, useState, useCallback } from "react";
+import { useParams, useRouter } from "next/navigation";
+import { supabase } from "@/lib/supabase";
+
+const day = (t: string) => new Date(t).toLocaleDateString("de-CH", { weekday: "long", day: "numeric", month: "long" });
+const time = (t: string) => new Date(t).toLocaleTimeString("de-CH", { hour: "2-digit", minute: "2-digit" });
+
+export default function Provider() {
+  const { id } = useParams<{ id: string }>();
+  const router = useRouter();
+  const [p, setP] = useState<any>(null);
+  const [slots, setSlots] = useState<any[]>([]);
+  const [services, setServices] = useState<any[]>([]);
+  const [mine, setMine] = useState<Record<string, string>>({}); // slot_id -> booking_id
+  const [user, setUser] = useState<any>(null);
+
+  const load = useCallback(async () => {
+    const { data: u } = await supabase.auth.getUser();
+    setUser(u.user);
+    const { data: pr } = await supabase.from("providers").select("*").eq("id", id).single();
+    setP(pr);
+    const { data: sv } = await supabase.from("services").select("*").eq("provider_id", id).order("created_at");
+    setServices(sv ?? []);
+    // Öffentliche Sicht: enthält nur "booked", nie Namen
+    const { data: s } = await supabase.from("slots_public").select("*").eq("provider_id", id)
+      .gt("starts_at", new Date().toISOString()).order("starts_at");
+    setSlots(s ?? []);
+    if (u.user) {
+      const { data: b } = await supabase.from("bookings").select("id,slot_id").eq("customer_id", u.user.id);
+      setMine(Object.fromEntries((b ?? []).map((x) => [x.slot_id, x.id])));
+    }
+  }, [id]);
+  useEffect(() => { load(); }, [load]);
+
+  async function book(slotId: string) {
+    if (!user) return router.push(`/login?next=/p/${id}`);
+    const name = user.user_metadata?.name || user.email;
+    const { error } = await supabase.from("bookings").insert({ slot_id: slotId, customer_id: user.id, customer_name: name });
+    if (error) alert(error.code === "23505" ? "Leider gerade vergeben." : "Buchung fehlgeschlagen.");
+    load();
+  }
+  async function cancel(bookingId: string) {
+    if (!confirm("Termin wirklich stornieren?")) return;
+    const { data } = await supabase.from("bookings").delete().eq("id", bookingId).select();
+    if (!data?.length) alert("Stornierung nicht mehr möglich (weniger als 2 Std. vor Beginn).");
+    load();
+  }
+
+  if (!p) return <main style={{ padding: 20 }}>Lädt …</main>;
+  const days: Record<string, any[]> = {};
+  slots.forEach((s) => (days[day(s.starts_at)] ??= []).push(s));
+
+  return (
+    <main style={{ maxWidth: 720, margin: "0 auto", padding: 20 }}>
+      <h1>{p.name}</h1>
+      <p>{p.category}<br />{p.street}, {p.plz} {p.city}{p.phone && <><br />{p.phone}</>}</p>
+      {services.length > 0 && (
+        <>
+          <h2>Preise</h2>
+          <div style={{ border: "1px solid #ddd", borderRadius: 12, padding: 12 }}>
+            {services.map((x) => (
+              <div key={x.id} style={{ display: "flex", justifyContent: "space-between", padding: "4px 0" }}>
+                <span>{x.name}</span><b>{x.price} CHF</b>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+      <h2>Kalender</h2>
+      {Object.keys(days).length === 0 && <p>Keine freien Termine eingetragen.</p>}
+      {Object.entries(days).map(([d, list]) => (
+        <div key={d} style={{ border: "1px solid #ddd", borderRadius: 12, padding: 12, margin: "10px 0" }}>
+          <b>{d}</b>
+          {list.map((s) => (
+            <div key={s.id} style={{ display: "flex", justifyContent: "space-between", marginTop: 8 }}>
+              <span>{time(s.starts_at)} · {s.service} · {s.price} CHF</span>
+              {mine[s.id] ? (
+                <span>Dein Termin <button onClick={() => cancel(mine[s.id])}>Stornieren</button></span>
+              ) : s.booked ? (
+                <span style={{ color: "#999" }}>besetzt</span>
+              ) : (
+                <button onClick={() => book(s.id)}>Buchen</button>
+              )}
+            </div>
+          ))}
+        </div>
+      ))}
+    </main>
+  );
+}
