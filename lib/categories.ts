@@ -1,1 +1,1 @@
-﻿export const CATEGORIES = ["Friseur", "Barbier", "Nagelstudio", "Kosmetik", "Wimpern", "Brows", "Massage", "Laser", "Hydrafacial", "Ästhetische Medizin", "Tattoo", "Piercing"];
+﻿export const CATEGORIES = ["Friseur", "Barbier", "Nagelstudio", "Kosmetik", "Massage", "Laser", "Hydrafacial", "Ästhetische Medizin", "Tattoo", "Piercing"];
