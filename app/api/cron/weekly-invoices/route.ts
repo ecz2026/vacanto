@@ -7,12 +7,6 @@ import { SwissQRBill } from "swissqrbill/pdf";
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
-const resend = new Resend(process.env.RESEND_API_KEY!);
-
 type Provider = {
   name: string;
   email: string;
@@ -85,6 +79,20 @@ export async function GET(req: NextRequest) {
   if (req.headers.get("authorization") !== `Bearer ${process.env.CRON_SECRET}`) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
+
+  if (
+    !process.env.NEXT_PUBLIC_SUPABASE_URL ||
+    !process.env.SUPABASE_SERVICE_ROLE_KEY ||
+    !process.env.RESEND_API_KEY
+  ) {
+    return NextResponse.json({ error: "missing env variables" }, { status: 500 });
+  }
+
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL,
+    process.env.SUPABASE_SERVICE_ROLE_KEY
+  );
+  const resend = new Resend(process.env.RESEND_API_KEY);
 
   const rate = Number(process.env.COMMISSION_RATE);
   const min = Number(process.env.MIN_INVOICE_CHF);
