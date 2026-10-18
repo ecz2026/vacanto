@@ -76,7 +76,7 @@ export default function Provider() {
                 <span>
                   {time(s.starts_at)} - {time(s.ends_at)}
                   {s.discount_pct > 0 && !s.booked && (
-                    <span style={{ marginLeft: 8, background: "#e8590c", color: "#fff", borderRadius: 6, padding: "2px 8px", fontSize: 13, fontWeight: 700 }}>
+                    <span style={{ marginLeft: 8, background: "#ffc02e", color: "#1f2937", borderRadius: 6, padding: "2px 8px", fontSize: 13, fontWeight: 700 }}>
                       Last Minute -{s.discount_pct}%
                     </span>
                   )}

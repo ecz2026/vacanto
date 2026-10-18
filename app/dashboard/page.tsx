@@ -202,7 +202,7 @@ export default function Dashboard() {
                       <button onClick={() => respond(r.booking_id, false)}>Ablehnen</button>
                     </span>
                   )}
-                  {r.status === "confirmed" && <span>Bestätigt</span>}
+                  {r.status === "confirmed" && <span style={{ color: "#15803d", fontWeight: 600 }}>Bestätigt</span>}
                 </div>
                 {r.booking_id && (
                   <div style={{ marginTop: 6 }}>

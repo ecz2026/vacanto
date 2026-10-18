@@ -9,7 +9,7 @@ export default function Agb() {
       <h2>1. Geltungsbereich</h2>
       <p>
         Diese Bedingungen gelten für die Nutzung der Plattform Vacanto durch Kundinnen, Kunden und Anbieter.
-        Betreiber ist EINTRAGEN: Name bzw. Firma.
+        Betreiber ist Ecom Consulting Zeqiri.
       </p>
 
       <h2>2. Rolle von Vacanto</h2>
@@ -47,7 +47,7 @@ export default function Agb() {
       </p>
 
       <h2>8. Anwendbares Recht</h2>
-      <p>Es gilt Schweizer Recht. Gerichtsstand ist EINTRAGEN: Ort.</p>
+      <p>Es gilt Schweizer Recht. Gerichtsstand ist St. Gallen.</p>
     </main>
   );
 }

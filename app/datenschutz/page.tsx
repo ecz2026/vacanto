@@ -8,8 +8,8 @@ export default function Datenschutz() {
 
       <h2>1. Verantwortlich</h2>
       <p>
-        EINTRAGEN: Vor- und Nachname bzw. Firma, Strasse, PLZ Ort, Schweiz<br />
-        E-Mail: EINTRAGEN
+        Ecom Consulting Zeqiri, Lindenwiesstrasse 10, 9200 Gossau SG, Schweiz<br />
+        E-Mail: info@vacanto.ch
       </p>
 
       <h2>2. Welche Daten wir bearbeiten</h2>

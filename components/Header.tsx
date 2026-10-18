@@ -29,13 +29,13 @@ export default function Header() {
     router.push('/');
   };
 
-  const nav = { color: 'var(--fg)', textDecoration: 'none', fontWeight: 600 } as const;
+  const nav = { color: '#e6eefc', textDecoration: 'none', fontWeight: 600 } as const;
 
   return (
-    <header style={{ borderBottom: '1px solid #e7e2da', background: '#fff' }}>
-      <nav style={{ maxWidth: 720, margin: '0 auto', padding: '14px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-        <Link href="/" style={{ fontSize: 24, fontWeight: 800, letterSpacing: -1, color: 'var(--fg)', textDecoration: 'none' }}>
-          Vacanto<span style={{ color: 'var(--ac)' }}>.</span>
+    <header style={{ background: 'var(--ink)' }}>
+      <nav style={{ maxWidth: 720, margin: '0 auto', padding: '12px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+        <Link href="/" style={{ fontSize: 24, fontWeight: 800, letterSpacing: -1, color: '#fff', textDecoration: 'none' }}>
+          Vacanto<span style={{ color: 'var(--deal)' }}>.</span>
         </Link>
         <span style={{ display: 'flex', gap: 16, alignItems: 'center', flexWrap: 'wrap' }}>
           {user ? (

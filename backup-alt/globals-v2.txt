@@ -1,0 +1,84 @@
+:root {
+  --bg: #f6f8fb;
+  --card: #ffffff;
+  --fg: #0f172a;
+  --ink: #0f2a47;
+  --mut: #64748b;
+  --line: #e2e8f0;
+  --ac: #1f3a5f;
+  --ac-hover: #2b4f80;
+  --deal: #c2410c;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font: 16px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+main {
+  max-width: 720px !important;
+  margin: 0 auto !important;
+  padding: 28px 20px 48px !important;
+}
+
+h1 { font-size: clamp(28px, 5vw, 40px); line-height: 1.15; letter-spacing: -0.02em; margin: 0 0 8px; color: var(--ink); }
+h2 { font-size: 20px; margin: 32px 0 12px; color: var(--ink); }
+p { color: #334155; margin: 8px 0; }
+
+a { color: var(--ac); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+input, select {
+  font: inherit;
+  color: var(--fg);
+  background: #fff;
+  padding: 11px 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  min-width: 0;
+}
+input:focus, select:focus { outline: 2px solid var(--ac); outline-offset: 0; border-color: transparent; }
+input[type="checkbox"] { width: 18px; height: 18px; padding: 0; accent-color: var(--ac); }
+form input { flex: 1; }
+
+button {
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  border: 0;
+  border-radius: 10px;
+  padding: 10px 16px;
+  background: var(--ac);
+  color: #fff;
+  transition: background .15s;
+}
+button:hover { background: var(--ac-hover); }
+button:disabled { opacity: .45; cursor: not-allowed; }
+
+header button { background: transparent; color: var(--fg); border: 1px solid var(--line); padding: 7px 14px; }
+header button:hover { background: #eef2f7; }
+
+div[style*="border"], label[style*="border"] { border-color: var(--line) !important; }
+div[style*="border"] { background: var(--card); box-shadow: 0 1px 2px rgba(15, 23, 42, .04); }
+
+main > a[href^="/p/"] {
+  display: block;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, .04);
+  color: inherit;
+  transition: transform .12s, box-shadow .12s;
+}
+main > a[href^="/p/"]:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(15, 23, 42, .08);
+  text-decoration: none;
+}
+
+footer a { color: var(--mut); font-size: 14px; }

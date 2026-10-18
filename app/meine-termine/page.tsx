@@ -59,7 +59,7 @@ export default function MyBookings() {
             <b>{dayLabel(r.starts_at)}, {tm(r.starts_at)} - {tm(r.ends_at)}</b>
             <div>{r.provider_name} · {r.street}, {r.plz} {r.city}{r.phone ? ` · ${r.phone}` : ""}</div>
             <div style={{ marginTop: 4 }}>{r.services_text ?? "keine Leistungen"} · <b>{chf(r.total_chf)}</b></div>
-            <div style={{ marginTop: 4, color: "var(--mut)" }}>{statusText[r.status] ?? r.status}</div>
+            <div style={{ marginTop: 4, fontWeight: 600, color: r.status === "confirmed" ? "#15803d" : r.status === "declined" ? "#b91c1c" : "#a16207" }}>{statusText[r.status] ?? r.status}</div>
 
             {(r.status === "pending" || r.status === "confirmed") && !ended(r) && (
               <div style={{ marginTop: 8 }}><button onClick={() => cancel(r.id)}>Stornieren</button></div>
