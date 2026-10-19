@@ -15,6 +15,8 @@ export default function Home() {
   const [busy, setBusy] = useState(false);
   const [count, setCount] = useState(0);
 
+  const [activeCats, setActiveCats] = useState<string[]>([]);
+
   async function search(e?: React.FormEvent) {
     e?.preventDefault();
     setBusy(true);
@@ -43,6 +45,16 @@ export default function Home() {
   useEffect(() => {
     supabase.from("open_slots").select("id", { count: "exact", head: true }).then(({ count }) => setCount(count ?? 0));
   }, []);
+  useEffect(() => {
+    supabase
+      .from("providers")
+      .select("category")
+      .eq("paused", false)
+      .then(({ data }) => {
+        const used = new Set((data ?? []).map((r: any) => r.category));
+        setActiveCats(CATEGORIES.filter((c) => used.has(c)));
+      });
+  }, []);
 
   return (
     <>
@@ -55,7 +67,7 @@ export default function Home() {
             <input value={plz} onChange={(e) => setPlz(e.target.value)} placeholder="PLZ, z. B. 9000" inputMode="numeric" maxLength={4} style={{ maxWidth: 170 }} />
             <select value={cat} onChange={(e) => setCat(e.target.value)}>
               <option value="">Alle Kategorien</option>
-              {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+              {activeCats.map((c) => <option key={c} value={c}>{c}</option>)}
             </select>
             <button type="submit">{busy ? "Suche ..." : "Suchen"}</button>
           </form>
