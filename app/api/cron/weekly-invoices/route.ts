@@ -80,17 +80,19 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
-  if (
-    !process.env.NEXT_PUBLIC_SUPABASE_URL ||
-    !process.env.SUPABASE_SERVICE_ROLE_KEY ||
-    !process.env.RESEND_API_KEY
-  ) {
-    return NextResponse.json({ error: "missing env variables" }, { status: 500 });
+    const required = [
+    "NEXT_PUBLIC_SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY", "RESEND_API_KEY",
+    "COMMISSION_RATE", "MIN_INVOICE_CHF", "CREDITOR_NAME", "CREDITOR_ADDRESS",
+    "CREDITOR_ZIP", "CREDITOR_CITY", "CREDITOR_IBAN",
+  ];
+  const missing = required.filter((k) => !process.env[k]);
+  if (missing.length) {
+    return NextResponse.json({ error: "missing env variables", missing }, { status: 500 });
   }
 
   const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL,
-    process.env.SUPABASE_SERVICE_ROLE_KEY
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
   );
   const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -146,13 +148,13 @@ export async function GET(req: NextRequest) {
     if (insErr || !inv) continue; // unique-Constraint verhindert Doppelrechnungen
 
     // ANNAHME: providers(id, name, email, street, zip, city)
-    const { data: provider } = await supabase
+        const { data: p } = await supabase
       .from("providers")
-      .select("name, email, street, zip, city")
+      .select("name, email, street, plz, city")
       .eq("id", providerId)
       .single();
-    if (!provider) continue;
-
+    if (!p) continue;
+    const provider = { name: p.name, email: p.email, street: p.street, zip: p.plz, city: p.city };
     const pdf = await buildPdf({ ...inv, amount_chf: amount, provider });
 
     await resend.emails.send({
