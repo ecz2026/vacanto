@@ -112,10 +112,9 @@ export async function GET(req: NextRequest) {
   const iso = (d: Date) => d.toISOString().slice(0, 10);
 
   // ANNAHME: bookings(provider_id, price, status, starts_at); status 'attended' = erschienen
-  const { data: bookings, error } = await supabase
-    .from("bookings")
+    const { data: bookings, error } = await supabase
+    .from("billable_bookings")
     .select("provider_id, price")
-    .eq("status", "attended")
     .gte("starts_at", lastMonday.toISOString())
     .lt("starts_at", thisMonday.toISOString());
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
@@ -148,14 +147,16 @@ export async function GET(req: NextRequest) {
     if (insErr || !inv) continue; // unique-Constraint verhindert Doppelrechnungen
 
     // ANNAHME: providers(id, name, email, street, zip, city)
-        const { data: p } = await supabase
+          const { data: p } = await supabase
       .from("providers")
-      .select("name, email, street, plz, city")
+      .select("name, street, plz, city")
       .eq("id", providerId)
       .single();
     if (!p) continue;
-    const provider = { name: p.name, email: p.email, street: p.street, zip: p.plz, city: p.city };
-    const pdf = await buildPdf({ ...inv, amount_chf: amount, provider });
+    const { data: userRes } = await supabase.auth.admin.getUserById(providerId);
+    const email = userRes?.user?.email;
+    if (!email) continue;
+    const provider = { name: p.name, email, street: p.street, zip: p.plz, city: p.city };
 
     await resend.emails.send({
       from: "Vacanto <rechnung@vacanto.ch>",
