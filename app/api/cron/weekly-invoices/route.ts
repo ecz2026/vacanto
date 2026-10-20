@@ -157,6 +157,7 @@ export async function GET(req: NextRequest) {
     const email = userRes?.user?.email;
     if (!email) continue;
     const provider = { name: p.name, email, street: p.street, zip: p.plz, city: p.city };
+    const pdf = await buildPdf({ ...inv, amount_chf: amount, provider });
 
     await resend.emails.send({
       from: "Vacanto <rechnung@vacanto.ch>",
