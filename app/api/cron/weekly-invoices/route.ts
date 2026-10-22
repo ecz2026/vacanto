@@ -131,7 +131,7 @@ export async function GET(req: NextRequest) {
     if (amount < min) continue;
 
     const due = new Date(thisMonday);
-    due.setUTCDate(due.getUTCDate() + 10);
+    due.setUTCDate(due.getUTCDate() + 7);
 
     const { data: inv, error: insErr } = await supabase
       .from("invoices")

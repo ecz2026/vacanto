@@ -40,7 +40,7 @@ export default function Agb() {
       <h2>6. Gebühren</h2>
       <p>6.1 Die Registrierung und die Nutzung von Vacanto sind für Anbieter kostenlos.</p>
       <p>6.2 Für jeden über Vacanto vermittelten und wahrgenommenen Termin fällt eine Provision von 10% des Terminpreises (inkl. MWST) an.</p>
-      <p>6.3 Die Abrechnung erfolgt wöchentlich per Rechnung an die hinterlegte E-Mail-Adresse. Zahlungsfrist: 30 Tage.</p>
+      <p>6.3 Die Abrechnung erfolgt wöchentlich per Rechnung an die hinterlegte E-Mail-Adresse. Zahlungsfrist: 7 Tage.</p>
       <p>6.4 Nicht wahrgenommene oder stornierte Termine sind provisionsfrei.</p>
 
       <h2>7. Haftung</h2>
