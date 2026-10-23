@@ -15,6 +15,8 @@ type Provider = {
   city: string;
 };
 
+const ch = (s: string) => s.split("-").reverse().join(".");
+
 function buildPdf(inv: {
   invoice_no: number;
   amount_chf: number;
@@ -42,13 +44,15 @@ function buildPdf(inv: {
       .text(inv.provider.street)
       .text(`${inv.provider.zip} ${inv.provider.city}`);
     pdf.moveDown(2);
-    pdf.fontSize(14).text(`Rechnung Nr. ${inv.invoice_no}`);
+        pdf.fontSize(14).text(`Rechnung Nr. ${inv.invoice_no}`);
     pdf
       .fontSize(10)
       .moveDown()
-      .text(`Provision Vacanto, ${inv.period_start} bis ${inv.period_end}`);
+      .text(`Provision Vacanto, ${ch(inv.period_start)} bis ${ch(inv.period_end)}`);
+    pdf.text(`${Math.round(Number(process.env.COMMISSION_RATE) * 100)} % Provision auf die vermittelten und wahrgenommenen Termine im Zeitraum.`);
     pdf.text(`Betrag: CHF ${inv.amount_chf.toFixed(2)}`);
-    pdf.text(`Zahlbar bis: ${inv.due_at}`);
+    pdf.text(`Rechnungsdatum: ${ch(new Date().toISOString().slice(0, 10))}`);
+    pdf.text(`Zahlbar bis: ${ch(inv.due_at)}`);
 
     const qr = new SwissQRBill({
       amount: inv.amount_chf,
@@ -162,8 +166,8 @@ export async function GET(req: NextRequest) {
     await resend.emails.send({
       from: "Vacanto <rechnung@vacanto.ch>",
       to: provider.email,
-      subject: `Rechnung ${inv.invoice_no}: Provision ${iso(lastMonday)} bis ${iso(lastSunday)}`,
-      text: `Guten Tag\n\nAnbei die Provisionsrechnung über CHF ${amount.toFixed(2)}. Zahlbar bis ${iso(due)}.\n\nFreundliche Grüsse\nVacanto`,
+      subject: `Rechnung ${inv.invoice_no}: Provision ${ch(iso(lastMonday))} bis ${ch(iso(lastSunday))}`,
+      text: `Guten Tag ${provider.name}\n\nAnbei die Provisionsrechnung über CHF ${amount.toFixed(2)}. Zahlbar bis ${ch(iso(due))}.\n\nFreundliche Grüsse\nVacanto`,
       attachments: [{ filename: `Rechnung-${inv.invoice_no}.pdf`, content: pdf }],
     });
 
